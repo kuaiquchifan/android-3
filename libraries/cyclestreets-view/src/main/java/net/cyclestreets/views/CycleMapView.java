@@ -87,7 +87,7 @@ public class CycleMapView extends FrameLayout
   public List<Overlay> getOverlays() { return mapView_.getOverlays(); }
   public IGeoPoint getMapCenter() { return mapView_.getMapCenter(); }
   private MapTileProviderBase getTileProvider() { return mapView_.getTileProvider(); }
-  public int getZoomLevel() { return mapView_.getZoomLevel(); }
+  public int getZoomLevel() { return (int)mapView_.getZoomLevelDouble(); }
   private Scroller getScroller() { return mapView_.getScroller(); }
   public IMapController getController() { return mapView_.getController(); }
   public BoundingBox getBoundingBox() { return mapView_.getBoundingBox(); }
@@ -148,8 +148,8 @@ public class CycleMapView extends FrameLayout
     getController().setCenter(centre);
     centreOn(centre);
 
-    getController().setZoom(pref(PREFS_APP_ZOOM_LEVEL, 14));
     controllerOverlay_.onResume(prefs_);
+    getController().setZoom((double)pref(PREFS_APP_ZOOM_LEVEL, 14));
 
     new CountDownTimer(250, 50) {
       public void onTick(long unfinished) { }
