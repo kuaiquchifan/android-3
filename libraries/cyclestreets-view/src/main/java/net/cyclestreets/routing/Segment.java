@@ -165,7 +165,7 @@ public abstract class Segment {
     for (int i = 1; i <= minIndex; ++i) {
       final IGeoPoint p1 = points_.get(i-1);
       final IGeoPoint p2 = points_.get(i);
-      cumulative += ((GeoPoint)p1).distanceTo(p2);
+      cumulative += ((GeoPoint)p1).distanceToAsDouble(p2);
     }
 
     cumulative += at.offset();

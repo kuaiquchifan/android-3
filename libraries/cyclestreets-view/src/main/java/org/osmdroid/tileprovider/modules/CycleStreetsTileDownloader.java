@@ -7,12 +7,12 @@ import net.cyclestreets.tiles.UpsizingTileSource;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.BitmapPool;
-import org.osmdroid.tileprovider.MapTile;
 import org.osmdroid.tileprovider.MapTileRequestState;
 import org.osmdroid.tileprovider.ReusableBitmapDrawable;
 import org.osmdroid.tileprovider.tilesource.BitmapTileSourceBase.LowMemoryException;
 import org.osmdroid.tileprovider.tilesource.ITileSource;
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase;
+import org.osmdroid.util.MapTileIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,14 +41,14 @@ import static org.osmdroid.tileprovider.constants.OpenStreetMapTileProviderConst
  */
 public class CycleStreetsTileDownloader extends MapTileModuleProviderBase {
   private interface IOnlineTileSource {
-    String getTileURLString(MapTile aTile);
+    String getTileURLString(long pMapTileIndex);
     Drawable getDrawable(InputStream aTileInputStream) throws LowMemoryException;
     ITileSource unwrap();
   }
   private static class OnlineTileSourceWrapper implements IOnlineTileSource {
     private OnlineTileSourceBase otsb_;
     OnlineTileSourceWrapper(OnlineTileSourceBase otsb) { otsb_ = otsb; }
-    public String getTileURLString(MapTile aTile) { return otsb_.getTileURLString(aTile); }
+    public String getTileURLString(long pMapTileIndex) { return otsb_.getTileURLString(pMapTileIndex); }
     public Drawable getDrawable(InputStream aTileInputStream) throws LowMemoryException {
       return otsb_.getDrawable(aTileInputStream);
     }
@@ -57,7 +57,7 @@ public class CycleStreetsTileDownloader extends MapTileModuleProviderBase {
   private static class UpsizingTileSourceWrapper implements IOnlineTileSource {
     private UpsizingTileSource uts_;
     UpsizingTileSourceWrapper(UpsizingTileSource uts) { uts_ = uts; }
-    public String getTileURLString(MapTile aTile) { return uts_.getTileURLString(aTile); }
+    public String getTileURLString(long pMapTileIndex) { return uts_.getTileURLString(pMapTileIndex); }
     public Drawable getDrawable(InputStream aTileInputStream) throws LowMemoryException {
       return uts_.getDrawable(aTileInputStream);
     }
@@ -158,7 +158,7 @@ public class CycleStreetsTileDownloader extends MapTileModuleProviderBase {
   }
 
   @Override
-  protected Runnable getTileLoader() {
+  public MapTileModuleProviderBase.TileLoader getTileLoader() {
     return new TileLoader();
   }
 
@@ -192,18 +192,16 @@ public class CycleStreetsTileDownloader extends MapTileModuleProviderBase {
   // ===========================================================
   protected class TileLoader extends MapTileModuleProviderBase.TileLoader {
     @Override
-    public Drawable loadTile(final MapTileRequestState aState) throws CantContinueException {
+    public Drawable loadTile(final long pMapTileIndex) throws CantContinueException {
       IOnlineTileSource tileSource = mTileSource.get();
       if (tileSource == null)
         return null;
-
-      final MapTile tile = aState.getMapTile();
 
       try {
         if (mNetworkAvailablityCheck != null && !mNetworkAvailablityCheck.getNetworkAvailable())
           return null;
 
-        final String tileURLString = tileSource.getTileURLString(tile);
+        final String tileURLString = tileSource.getTileURLString(pMapTileIndex);
         if (TextUtils.isEmpty(tileURLString))
           return null;
 
@@ -214,13 +212,13 @@ public class CycleStreetsTileDownloader extends MapTileModuleProviderBase {
 
         // Check to see if we got success
         if (!response.isSuccessful()) {
-          logger.warn("Problem downloading MapTile: " + tile + " HTTP response: " + response.code());
+          logger.warn("Problem downloading MapTile: " + MapTileIndex.toString(pMapTileIndex) + " HTTP response: " + response.code());
           return null;
         }
 
         final byte[] data = response.body().bytes();
         if (data.length == 0) {
-          logger.warn("No content downloading MapTile: " + tile);
+          logger.warn("No content downloading MapTile: " + MapTileIndex.toString(pMapTileIndex));
           return null;
         }
 
@@ -228,7 +226,7 @@ public class CycleStreetsTileDownloader extends MapTileModuleProviderBase {
 
         // Save the data to the filesystem cache
         if (mFilesystemCache != null) {
-          mFilesystemCache.saveFile(tileSource.unwrap(), tile, byteStream);
+          mFilesystemCache.saveFile(tileSource.unwrap(), pMapTileIndex, byteStream, 0L);
           byteStream.reset();
         }
         final Drawable result = tileSource.getDrawable(byteStream);
@@ -236,18 +234,18 @@ public class CycleStreetsTileDownloader extends MapTileModuleProviderBase {
         return result;
       } catch (final UnknownHostException e) {
         // no network connection so empty the queue
-        logger.warn("UnknownHostException downloading MapTile: " + tile + " : " + e);
+        logger.warn("UnknownHostException downloading MapTile: " + MapTileIndex.toString(pMapTileIndex) + " : " + e);
         throw new CantContinueException(e);
       } catch (final LowMemoryException e) {
         // low memory so empty the queue
-        logger.warn("LowMemoryException downloading MapTile: " + tile + " : " + e);
+        logger.warn("LowMemoryException downloading MapTile: " + MapTileIndex.toString(pMapTileIndex) + " : " + e);
         throw new CantContinueException(e);
       } catch (final FileNotFoundException e) {
-        logger.warn("Tile not found: " + tile + " : " + e);
+        logger.warn("Tile not found: " + MapTileIndex.toString(pMapTileIndex) + " : " + e);
       } catch (final IOException e) {
-        logger.warn("IOException downloading MapTile: " + tile + " : " + e);
+        logger.warn("IOException downloading MapTile: " + MapTileIndex.toString(pMapTileIndex) + " : " + e);
       } catch (final Throwable e) {
-        logger.error("Error downloading MapTile: " + tile, e);
+        logger.error("Error downloading MapTile: " + MapTileIndex.toString(pMapTileIndex), e);
       }
 
       return null;
