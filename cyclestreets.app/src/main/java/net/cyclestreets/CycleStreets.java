@@ -9,7 +9,7 @@ public class CycleStreets extends MainNavDrawerActivity implements RouteMapActiv
 
     super.onCreate(savedInstanceState);
 
-    MainSupport.loadRoute(getIntent(), this);
+    MainSupport.handleLaunchIntent(getIntent(), this);
   }
 
   @Override
